@@ -1,0 +1,88 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.4;
+
+abstract contract AccessControl {
+    event RoleGranted(uint8 role, address account, address admin);
+
+    mapping(uint8 => uint16) public roleTxnFee;
+    mapping(address => uint8) public addressToRole;
+
+    uint8 public constant USER = 0;            // DEFAULT
+    uint8 public constant ADMIN = 1;           // OWNER
+    uint8 public constant ROLE_1 = 2;          // CUSTOM_ROLE_1
+    uint8 public constant ROLE_2 = 3;          // CUSTOM_ROLE_2
+    uint8 public constant ROLE_3 = 4;          // CUSTOM_ROLE_3
+    uint8 public constant ROLE_4 = 5;          // CUSTOM_ROLE_4
+    uint8 public constant ROLE_5 = 6;          // CUSTOM_ROLE_5
+    uint8 public constant ROLE_6 = 7;          // CUSTOM_ROLE_6
+    uint8 public constant ROLE_7 = 8;          // CUSTOM_ROLE_7
+    uint8 public constant ROLE_8 = 9;          // CUSTOM_ROLE_8
+
+    event RoleTransactionFeeChanged(uint8 role, uint16 newTxhFee);
+
+    /**
+     * @dev Modifier that checks that an account has a specific role. Reverts
+     * with a standardized message including the required role.
+     *
+     * The format of the revert reason is given by the following regular expression:
+     *
+     *  /^AccessControl: account (0x[0-9a-f]{40}) is missing role (0x[0-9a-f]{64})$/
+     *
+     * _Available since v4.1._
+     */
+    modifier onlyAdmin() {
+        require(addressToRole[msg.sender] == ADMIN, "Function caller is not an ADMIN");
+        _;
+    }
+
+    /**
+     * @dev Grants `role` to `account`.
+     *
+     * If `account` had not been already granted `role`, emits a {RoleGranted}
+     * event.
+     *
+     * Requirements:
+     *
+     * - the caller must have ``role``'s admin role.
+     */
+    function grantRole(uint8 role, address account) public onlyAdmin {
+        require(addressToRole[account] != role, "account already has that role");
+        _grantRole(role, account);
+    }
+
+    /**
+     * @dev Grants `role` to `account`.
+     *
+     * If `account` had not been already granted `role`, emits a {RoleGranted}
+     * event. Note that unlike {grantRole}, this function doesn't perform any
+     * checks on the calling account.
+     *
+     * [WARNING]
+     * ====
+     * This function should only be called from the constructor when setting
+     * up the initial roles for the system.
+     *
+     * Using this function in any other way is effectively circumventing the admin
+     * system imposed by {AccessControl}.
+     * ====
+     */
+    function _setupRole(uint8 role, address account) internal {
+        _grantRole(role, account);
+    }
+
+    function _grantRole(uint8 role, address account) private {
+        addressToRole[account] = role;
+        emit RoleGranted(role, account, msg.sender);
+    }
+
+    /// @notice Sets given transaction fee to the role
+    /// @param role The uint8 role.
+    /// @param txhFee The amount of fee in percent.
+    function setRoleTxnFee(uint8 role, uint16 txhFee) public onlyAdmin {
+        require(txhFee <= 10000, "[Transaction Fee]: Fee cannot be more than 100%");
+
+        roleTxnFee[role] = txhFee;
+
+        emit RoleTransactionFeeChanged(role, txhFee);
+    }
+}

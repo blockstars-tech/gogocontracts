@@ -22,12 +22,12 @@ contract("BridgePublic", async (accounts) => {
   };
 
   beforeEach("Deploy GoldToken and BridgePublic Contracts", async () => {
-    gogoPublicInstance = await GoldToken.new("GoldToken", "GT", { from: contractOwnerAddr });
+    gogoPublicInstance = await GoldToken.new({ from: contractOwnerAddr });
     bridgePublicInstance = await BridgePublic.new(
       gogoPublicInstance.address,
-      gogoServiceAddrs,
       { from: contractOwnerAddr }
     );
+    await bridgePublicInstance.addGogoServiceAddress(gogoServiceAddrs, {from: contractOwnerAddr});
     await gogoPublicInstance.setBridgeAddress(bridgePublicInstance.address, { from: contractOwnerAddr });
   });
 
@@ -116,7 +116,7 @@ contract("BridgePublic", async (accounts) => {
       const signature = await getSignature(userAddress, amount, nonce, direction, signingAddress);
       await truffleAssert.reverts(
         bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature),
-        "ERC20: burn amount_ exceeds allowance"
+        "ERC20: burn amount exceeds balance"
       );
     });
 
@@ -171,6 +171,5 @@ contract("BridgePublic", async (accounts) => {
         assert.isTrue(isInPrivateNonce, "toPrivateNonces[nonce] should be true");
       });
     })
-
   });
 });
