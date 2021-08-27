@@ -10,6 +10,9 @@ contract GoldToken is IERC20MintBurn, AccessControl {
     mapping(address => mapping(address => uint256)) private _allowances;
 
     uint256 private _totalSupply;
+    
+    string private _name;
+    string private _symbol;  
 
     address public transactionFeeCollector;
     address public bridgeAddress;
@@ -21,8 +24,9 @@ contract GoldToken is IERC20MintBurn, AccessControl {
         _;
     }
 
-    constructor() {
-        _mint(msg.sender, 1000000 * 10**18);
+    constructor(string memory name_, string memory symbol_) {
+        _name = name_;
+        _symbol = symbol_;
 
         _setupRole(ADMIN, msg.sender); // Sets role admin to deployer
     }
@@ -34,16 +38,16 @@ contract GoldToken is IERC20MintBurn, AccessControl {
     /**
      * @dev Returns the name of the token.
      */
-    function name() public pure override returns (string memory) {
-        return "GoldToken";
+    function name() public view override returns (string memory) {
+        return _name;
     }
 
     /**
      * @dev Returns the symbol of the token, usually a shorter version of the
      * name.
      */
-    function symbol() public pure override returns (string memory) {
-        return "GoGo";
+    function symbol() public view override returns (string memory) {
+        return _symbol;
     }
 
     /**
@@ -87,6 +91,7 @@ contract GoldToken is IERC20MintBurn, AccessControl {
      */
     function transfer(address recipient, uint256 amount) public override returns (bool) {
         _transfer(msg.sender, recipient, amount);
+
         return true;
     }
 
@@ -106,6 +111,7 @@ contract GoldToken is IERC20MintBurn, AccessControl {
      */
     function approve(address spender, uint256 amount) public override returns (bool) {
         _approve(msg.sender, spender, amount);
+
         return true;
     }
 
@@ -198,8 +204,8 @@ contract GoldToken is IERC20MintBurn, AccessControl {
 
         unchecked { _balances[sender] = senderBalance - amount; } 
 
-        uint256 transactionFeeCost = amount * roleTxnFee[addressToRole[sender]] / 10000;
-
+        uint256 transactionFeeCost = (amount * roleTxnFee[addressToRole[sender]]) / 100000000;
+        
         _balances[transactionFeeCollector] += transactionFeeCost; // amount * (transactionFeePercent /  100)
         _balances[recipient] += amount - transactionFeeCost; // amount - amount * transactionFee * AccessControl.feeDecimalMultiplier
         

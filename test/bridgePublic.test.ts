@@ -1,25 +1,23 @@
-const assert = require("chai").assert;
-const truffleAssert = require("truffle-assertions");
+import { assert } from "chai";
+import BN from "bn.js";
+import { BridgePublicInstance, GoldTokenInstance } from "../typechain";
+
+import { getSignature } from "./utils";
 
 const keys = require("./keys.json");
 
 const GoldToken = artifacts.require("GoldToken");
 const BridgePublic = artifacts.require("BridgePublic");
 
+const truffleAssert = require("truffle-assertions");
+
 contract("BridgePublic", async (accounts) => {
   // account addresses
   const [contractOwnerAddr, gogoServiceAddrs, address1, address2] = accounts;
   // bridge instance
-  let bridgePublicInstance;
+  let bridgePublicInstance: BridgePublicInstance;
   // goldTokenInstance
-  let gogoPublicInstance;
-  // get signature function
-  const getSignature = async (userAddress, amount, nonce, direction, signingAddress) => {
-    const data = await bridgePublicInstance.formSigningData(userAddress, amount, nonce, direction);
-    const privateKey = keys.private_keys[signingAddress.toLowerCase()];
-    const { signature } = await web3.eth.accounts.sign(data, privateKey);
-    return signature;
-  };
+  let gogoPublicInstance: GoldTokenInstance;
 
   beforeEach("Deploy GoldToken and BridgePublic Contracts", async () => {
     gogoPublicInstance = await GoldToken.new({ from: contractOwnerAddr });
@@ -27,15 +25,15 @@ contract("BridgePublic", async (accounts) => {
       gogoPublicInstance.address,
       { from: contractOwnerAddr }
     );
-    await bridgePublicInstance.addGogoServiceAddress(gogoServiceAddrs, {from: contractOwnerAddr});
+    await bridgePublicInstance.addGogoServiceAddress(gogoServiceAddrs, { from: contractOwnerAddr, });
     await gogoPublicInstance.setBridgeAddress(bridgePublicInstance.address, { from: contractOwnerAddr });
   });
 
   describe("testing receiveFromPrivateBridge function", () => {
     it("direction must be false", async () => {
       const [userAddress, amount, nonce, direction, signingAddress] 
-        = [address1, 1000, 10, true, gogoServiceAddrs];
-      const signature = await getSignature(userAddress, amount, nonce, direction, signingAddress);
+        = [address1, new BN(1000), new BN(10), true, gogoServiceAddrs];
+      const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
       await truffleAssert.reverts(
         bridgePublicInstance.receiveFromPrivateBridge(userAddress, amount, nonce, direction, signature),
         "direction must be false"
@@ -44,8 +42,8 @@ contract("BridgePublic", async (accounts) => {
 
     it("signer must be gogoService", async () => {
       const [userAddress, amount, nonce, direction, signingAddress] 
-        = [address1, 1000, 10, false, address2];
-      const signature = await getSignature(userAddress, amount, nonce, direction, signingAddress);
+        = [address1, new BN(1000), new BN(10), false, address2];
+      const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
       await truffleAssert.reverts(
         bridgePublicInstance.receiveFromPrivateBridge(userAddress, amount, nonce, direction, signature),
         "recovered address is not gogoService address"
@@ -55,9 +53,9 @@ contract("BridgePublic", async (accounts) => {
     it("cannot receive from private bridge if nonce already used", async () => {
       // initialize
       const [userAddress, amount, nonce, direction, signingAddress] 
-        = [address1, 1000, 10, false, gogoServiceAddrs];
+        = [address1, new BN(1000), new BN(10), false, gogoServiceAddrs];
       // get signature
-      const signature = await getSignature(userAddress, amount, nonce, direction, signingAddress);
+      const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
       // calling function
       await bridgePublicInstance.receiveFromPrivateBridge(userAddress, amount, nonce, direction, signature);
       await truffleAssert.reverts(
@@ -69,9 +67,9 @@ contract("BridgePublic", async (accounts) => {
     it("transaction successfully completed", async () => {
       // initialize
       const [userAddress, amount, nonce, direction, signingAddress] 
-        = [address1, 1000, 10, false, gogoServiceAddrs];
+        = [address1, new BN(1000), new BN(10), false, gogoServiceAddrs];
       // get signature
-      const signature = await getSignature(userAddress, amount, nonce, direction, signingAddress);
+      const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
       // get address1 balance before
       const balanceBefore = await gogoPublicInstance.balanceOf(address1);
       // calling function
@@ -81,10 +79,10 @@ contract("BridgePublic", async (accounts) => {
       // get toPublicNonces nonce value
       const isInPublicNonce = await bridgePublicInstance.toPublicNonces(nonce);
       // assertions
-      truffleAssert.eventEmitted(result, "MintedToGoldToken", (event) => {
-        return event.userAddress == userAddress && event.amount == amount;
+      truffleAssert.eventEmitted(result, "MintedToGoldToken", (event: any) => {
+        return event.userAddress == userAddress && event.amount == amount.toString();
       });
-      assert.equal(balanceAfter - balanceBefore, amount, "balance does not changed");
+      assert.isTrue(balanceAfter.sub(balanceBefore).eq(amount), "balance does not changed");
       assert.isTrue(isInPublicNonce, "toPublicNonces[nonce] should be true");
     });
   });
@@ -92,8 +90,8 @@ contract("BridgePublic", async (accounts) => {
   describe("testing sendToPrivateBridge function", () => {
     it("direction must be true", async () => {
       const [userAddress, amount, nonce, direction, signingAddress] 
-        = [address1, 1000, 10, false, gogoServiceAddrs];
-      const signature = await getSignature(userAddress, amount, nonce, direction, signingAddress);
+        = [address1, new BN(1000), new BN(10), false, gogoServiceAddrs];
+      const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
       await truffleAssert.reverts(
         bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature),
         "direction must be true"
@@ -102,8 +100,8 @@ contract("BridgePublic", async (accounts) => {
 
     it("signer must be gogoService", async () => {
       const [userAddress, amount, nonce, direction, signingAddress] 
-        = [address1, 1000, 10, true, address2];
-      const signature = await getSignature(userAddress, amount, nonce, direction, signingAddress);
+        = [address1, new BN(1000), new BN(10), true, address2];
+      const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
       await truffleAssert.reverts(
         bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature),
         "recovered address is not gogoService address"
@@ -112,8 +110,8 @@ contract("BridgePublic", async (accounts) => {
 
     it("amount must be allowed to contract for burning", async () => {
       const [userAddress, amount, nonce, direction, signingAddress] 
-        = [address1, 1000, 10, true, gogoServiceAddrs];
-      const signature = await getSignature(userAddress, amount, nonce, direction, signingAddress);
+        = [address1, new BN(1000), new BN(10), true, gogoServiceAddrs];
+      const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
       await truffleAssert.reverts(
         bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature),
         "ERC20: burn amount exceeds balance"
@@ -124,9 +122,9 @@ contract("BridgePublic", async (accounts) => {
       beforeEach("mint to address1 account", async () => {
         // initialize
         const [userAddress, amount, nonce, direction, signingAddress] 
-          = [address1, 1000, 10, false, gogoServiceAddrs];
+          = [address1, new BN(1000), new BN(10), false, gogoServiceAddrs];
         // get signature
-        const signature = await getSignature(userAddress, amount, nonce, direction, signingAddress);
+        const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
         // calling function
         await bridgePublicInstance.receiveFromPrivateBridge(userAddress, amount, nonce, direction, signature);
       });
@@ -134,9 +132,9 @@ contract("BridgePublic", async (accounts) => {
       it("cannot send to private bridge if nonce already used", async () => {
         // initialize
         const [userAddress, amount, nonce, direction, signingAddress] 
-          = [address1, 1000, 10, true, gogoServiceAddrs];
+          = [address1, new BN(1000), new BN(10), true, gogoServiceAddrs];
         // get signature
-        const signature = await getSignature(userAddress, amount, nonce, direction, signingAddress);
+        const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
         // approve 
         await gogoPublicInstance.approve(bridgePublicInstance.address, amount, { from: address1 });
         // calling function
@@ -150,9 +148,9 @@ contract("BridgePublic", async (accounts) => {
       it("transaction successfully completed", async () => {
         // initialize
         const [userAddress, amount, nonce, direction, signingAddress] 
-          = [address1, 1000, 10, true, gogoServiceAddrs];
+          = [address1, new BN(1000), new BN(10), true, gogoServiceAddrs];
         // get signature
-        const signature = await getSignature(userAddress, amount, nonce, direction, signingAddress);
+        const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
         // get contract balance before
         const balanceBefore = await gogoPublicInstance.balanceOf(address1);
         // approve 
@@ -164,10 +162,10 @@ contract("BridgePublic", async (accounts) => {
         // get toPublicNonces nonce value
         const isInPrivateNonce = await bridgePublicInstance.toPrivateNonces(nonce);
         // assertions
-        truffleAssert.eventEmitted(result, "BurnedFromGoldToken", (event) => {
-          return event.userAddress == userAddress && event.amount == amount;
+        truffleAssert.eventEmitted(result, "BurnedFromGoldToken", (event: any) => {
+          return event.userAddress == userAddress && event.amount == amount.toString();
         })
-        assert.equal(balanceBefore - balanceAfter, amount, "balance does not changed");
+        assert.isTrue(balanceBefore.sub(balanceAfter).eq(amount), "balance does not changed");
         assert.isTrue(isInPrivateNonce, "toPrivateNonces[nonce] should be true");
       });
     })

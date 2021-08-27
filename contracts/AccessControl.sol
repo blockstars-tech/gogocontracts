@@ -3,9 +3,16 @@ pragma solidity ^0.8.4;
 
 abstract contract AccessControl {
     event RoleGranted(uint8 role, address account, address admin);
+    
 
-    mapping(uint8 => uint16) public roleTxnFee;
+    /// @notice Fee Decimals look like this: let's assume that you want set 1% transaction fee
+    /// @notice well, the decimals are set to 6, so you should set fee equal to (1 * 10^6) to get 1% transaction fee
+    /// @dev Later to calculate the %, given amount of trasaction fee will be divided by (10^6 * 100) (to get numeral part of percent)
+
+    mapping(uint8 => uint32) public roleTxnFee;
     mapping(address => uint8) public addressToRole;
+
+    uint8 public constant FEE_DECIMALS = 6;
 
     uint8 public constant USER = 0;            // DEFAULT
     uint8 public constant ADMIN = 1;           // OWNER
@@ -18,7 +25,7 @@ abstract contract AccessControl {
     uint8 public constant ROLE_7 = 8;          // CUSTOM_ROLE_7
     uint8 public constant ROLE_8 = 9;          // CUSTOM_ROLE_8
 
-    event RoleTransactionFeeChanged(uint8 role, uint16 newTxhFee);
+    event RoleTransactionFeeChanged(uint8 role, uint32 newTxhFee);
 
     /**
      * @dev Modifier that checks that an account has a specific role. Reverts
@@ -76,10 +83,10 @@ abstract contract AccessControl {
     }
 
     /// @notice Sets given transaction fee to the role
-    /// @param role The uint8 role.
+    /// @param role The uint32 role.
     /// @param txhFee The amount of fee in percent.
-    function setRoleTxnFee(uint8 role, uint16 txhFee) public onlyAdmin {
-        require(txhFee <= 10000, "[Transaction Fee]: Fee cannot be more than 100%");
+    function setRoleTxnFee(uint8 role, uint32 txhFee) public onlyAdmin {
+        require(txhFee <= 100000000, "[Transaction Fee]: Fee cannot be more than 100%");
 
         roleTxnFee[role] = txhFee;
 
