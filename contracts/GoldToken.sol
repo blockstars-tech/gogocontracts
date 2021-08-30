@@ -11,16 +11,16 @@ contract GoldToken is IERC20MintBurn, AccessControl {
 
     uint256 private _totalSupply;
     
-    string private _name;
-    string private _symbol;  
-
     address public transactionFeeCollector;
     address public bridgeAddress;
+
+    string private _name;
+    string private _symbol;
 
     event TransactionFeeCollected(uint256 amount);
 
     modifier onlyBridge {
-        require(msg.sender == bridgeAddress, "This function can call only Bridge");
+        require(msg.sender == bridgeAddress, "Only Bridge can call this function");
         _;
     }
 
@@ -32,7 +32,7 @@ contract GoldToken is IERC20MintBurn, AccessControl {
     }
 
     function setBridgeAddress(address newBridgeAddress) external onlyAdmin {
-        require(newBridgeAddress != bridgeAddress, "Given address is current bridge address");
+        require(newBridgeAddress != bridgeAddress, "Provided address is current bridge address");
         bridgeAddress = newBridgeAddress;
     }
     /**

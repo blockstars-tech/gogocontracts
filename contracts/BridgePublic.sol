@@ -2,22 +2,28 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./IERC20MintBurn.sol";
 
 contract BridgePublic {
+    // Declaring state vaiable of contract owner
+    address public owner;
+
+    // Adding the library methods
+    using EnumerableSet for EnumerableSet.AddressSet;
+
+    // Declaring a set state variable of address tht signs the transactions
+    EnumerableSet.AddressSet private gogoServices;
+
     mapping(uint256 => bool) public toPublicNonces;
 
     mapping(uint256 => bool) public toPrivateNonces;
 
-    // address of service that signs the transactions
-    mapping(address => bool) isGogoService;
-    // address of contract creator
-    address public owner;
-    // GoldToken address
+    // Declaring varibale for token address
     IERC20MintBurn public token;
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Function can call only owner");
+        require(msg.sender == owner, "Only owner can call this function");
         _;
     }
 
@@ -29,21 +35,33 @@ contract BridgePublic {
     event MintedToGoldToken(address indexed userAddress, uint256 amount);
     event BurnedFromGoldToken(address indexed userAddress, uint256 amount);
 
+    function getGogoServicesList() public view returns(address[] memory) {
+        return gogoServices.values();
+    }
+
+    function getGogoServicesCount() public view returns(uint256) {
+        return gogoServices.length();
+    }
+
+    function getGogoServicesByIndex(uint256 index) public view returns(address) {
+        return gogoServices.at(index);
+    }
+
     function addGogoServiceAddress(address gogoService) public onlyOwner {
-        require(isGogoService[gogoService] == false, "GogoService already setted");
-        isGogoService[gogoService] = true;
+        require(gogoServices.contains(gogoService) == false, "Provided GogoService address is already set");
+        gogoServices.add(gogoService);
     }
 
     function removeGogoServiceAddress(address gogoService) public onlyOwner {
-        require(isGogoService[gogoService] == true, "GogoService already removed");
-        isGogoService[gogoService] = false;
+        require(gogoServices.contains(gogoService) == true, "Provided GogoService address is already removed");
+        gogoServices.remove(gogoService);
     }
 
     function receiveFromPrivateBridge(address userAddress_, uint256 amount_, uint256 nonce_, bool direction_, bytes memory signature_) public {
-        require(direction_ == false, "direction must be false");
-        require(isGogoService[recoverSigner(userAddress_, amount_, nonce_, direction_, signature_)], "recovered address is not gogoService address");
+        require(!direction_, "direction must be false");
+        require(gogoServices.contains(recoverSigner(userAddress_, amount_, nonce_, direction_, signature_)), "Recovered address is not gogoService address");
 
-        require(toPublicNonces[nonce_] == false, "nonce in toPublicNonces already exist");
+        require(!toPublicNonces[nonce_], "Provided nonce already exists in toPublicNonces");
         toPublicNonces[nonce_] = true;
 
         token.mint(userAddress_, amount_);
@@ -51,10 +69,12 @@ contract BridgePublic {
     }
 
     function sendToPrivateBridge(address userAddress_, uint256 amount_, uint256 nonce_, bool direction_, bytes memory signature_) public {
-        require(direction_ == true, "direction must be true");
-        require(isGogoService[recoverSigner(userAddress_, amount_, nonce_, direction_, signature_)], "recovered address is not gogoService address");
+        require(msg.sender == userAddress_, "You can burn only your balance");
 
-        require(toPrivateNonces[nonce_] == false, "nonce in toPrivateNonces already exist");
+        require(direction_, "direction must be true");
+        require(gogoServices.contains(recoverSigner(userAddress_, amount_, nonce_, direction_, signature_)), "Recovered address is not gogoService address");
+
+        require(!toPrivateNonces[nonce_], "Provided nonce already exists in toPrivateNonces");
         toPrivateNonces[nonce_] = true;
 
         token.burn(userAddress_, amount_);

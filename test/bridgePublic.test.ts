@@ -20,7 +20,7 @@ contract("BridgePublic", async (accounts) => {
   let gogoPublicInstance: GoldTokenInstance;
 
   beforeEach("Deploy GoldToken and BridgePublic Contracts", async () => {
-    gogoPublicInstance = await GoldToken.new({ from: contractOwnerAddr });
+    gogoPublicInstance = await GoldToken.new("GoldGo", "GOGO", { from: contractOwnerAddr });
     bridgePublicInstance = await BridgePublic.new(
       gogoPublicInstance.address,
       { from: contractOwnerAddr }
@@ -46,7 +46,7 @@ contract("BridgePublic", async (accounts) => {
       const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
       await truffleAssert.reverts(
         bridgePublicInstance.receiveFromPrivateBridge(userAddress, amount, nonce, direction, signature),
-        "recovered address is not gogoService address"
+        "Recovered address is not gogoService address"
       );
     });
 
@@ -60,7 +60,7 @@ contract("BridgePublic", async (accounts) => {
       await bridgePublicInstance.receiveFromPrivateBridge(userAddress, amount, nonce, direction, signature);
       await truffleAssert.reverts(
         bridgePublicInstance.receiveFromPrivateBridge(userAddress, amount, nonce, direction, signature),
-        "nonce in toPublicNonces already exist"
+        "Provided nonce already exists in toPublicNonces"
       );
     });
 
@@ -88,12 +88,22 @@ contract("BridgePublic", async (accounts) => {
   });
 
   describe("testing sendToPrivateBridge function", () => {
-    it("direction must be true", async () => {
+    it("should revert sentToPrivateBridge", async () => {
       const [userAddress, amount, nonce, direction, signingAddress] 
         = [address1, new BN(1000), new BN(10), false, gogoServiceAddrs];
       const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
       await truffleAssert.reverts(
         bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature),
+        "You can burn only your balance"
+      );
+    });
+
+    it("direction must be true", async () => {
+      const [userAddress, amount, nonce, direction, signingAddress] 
+        = [address1, new BN(1000), new BN(10), false, gogoServiceAddrs];
+      const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
+      await truffleAssert.reverts(
+        bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature, {from: userAddress}),
         "direction must be true"
       );
     });
@@ -103,8 +113,8 @@ contract("BridgePublic", async (accounts) => {
         = [address1, new BN(1000), new BN(10), true, address2];
       const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
       await truffleAssert.reverts(
-        bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature),
-        "recovered address is not gogoService address"
+        bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature, {from: userAddress}),
+        "Recovered address is not gogoService address"
       );
     });
 
@@ -113,7 +123,7 @@ contract("BridgePublic", async (accounts) => {
         = [address1, new BN(1000), new BN(10), true, gogoServiceAddrs];
       const signature = await getSignature(bridgePublicInstance, userAddress, amount, nonce, direction, signingAddress);
       await truffleAssert.reverts(
-        bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature),
+        bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature, {from: userAddress}),
         "ERC20: burn amount exceeds balance"
       );
     });
@@ -138,10 +148,10 @@ contract("BridgePublic", async (accounts) => {
         // approve 
         await gogoPublicInstance.approve(bridgePublicInstance.address, amount, { from: address1 });
         // calling function
-        await bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature);
+        await bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature, {from: userAddress});
         await truffleAssert.reverts(
-          bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature),
-          "nonce in toPrivateNonces already exist"
+          bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature, {from: userAddress}),
+          "Provided nonce already exists in toPrivateNonces"
         );
       });
 
@@ -156,7 +166,7 @@ contract("BridgePublic", async (accounts) => {
         // approve 
         await gogoPublicInstance.approve(bridgePublicInstance.address, amount, { from: address1 });
         // calling function
-        const result = await bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature);
+        const result = await bridgePublicInstance.sendToPrivateBridge(userAddress, amount, nonce, direction, signature, {from: userAddress});
         // get contract balance after 
         const balanceAfter = await gogoPublicInstance.balanceOf(address1);
         // get toPublicNonces nonce value

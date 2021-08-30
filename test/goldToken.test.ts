@@ -61,7 +61,7 @@ contract("GoldToken", async (accounts) => {
     it("Cannot change Bridge Address if it is already set", async () => {
       await truffleAssert.reverts(gogoPublicInstance.setBridgeAddress(bridgePublicInstance.address, {
         from: contractOwnerAddr,
-      }), "Given address is current bridge address");
+      }), "Provided address is current bridge address");
       
     });
 
@@ -70,14 +70,14 @@ contract("GoldToken", async (accounts) => {
   it("mint function can call only bridge", async () => {
     await truffleAssert.reverts(
       gogoPublicInstance.mint(address2, 10000, { from: address1 }),
-      "This function can call only Bridge"
+      "Only Bridge can call this function"
     );
   });
 
   it("burn function can call only bridge", async () => {
     await truffleAssert.reverts(
       gogoPublicInstance.burn(address2, 10000, { from: address1 }),
-      "This function can call only Bridge"
+      "Only Bridge can call this function"
     );
   });
 
@@ -162,7 +162,7 @@ contract("GoldToken", async (accounts) => {
         totalSupplyBefore
           .add(tokenAmount.mul(ten.pow(new BN(18))))
           .eq(totalSupplyAfter),
-        "Total supply are not equal"
+        "Total supplies are not equal"
       );
     });
     
@@ -207,7 +207,7 @@ contract("GoldToken", async (accounts) => {
           new BN(1),
           gogoServiceAddrs
         ),
-        "nonce in toPublicNonces already exist"
+        "Provided nonce already exists in toPublicNonces"
       );
     })
   });
