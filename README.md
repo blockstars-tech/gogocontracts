@@ -7,5 +7,5 @@
 > ganache-cli -e 10000 --acount_keys_path test/keys.json
 
 ##### Then you should just run tests with truffle or hardhat.
-> yarn test
+> yarn test --network test
 
