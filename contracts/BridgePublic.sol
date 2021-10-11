@@ -48,6 +48,7 @@ contract BridgePublic {
     }
 
     function addGogoServiceAddress(address gogoService) public onlyOwner {
+        require(gogoService != address(0), "Cannot add zero address");
         require(gogoServices.contains(gogoService) == false, "Provided GogoService address is already set");
         gogoServices.add(gogoService);
     }
